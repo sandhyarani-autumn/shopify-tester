@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Shopify Store Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+/* ── VARIABLES ─────────────────────────── */
+:root {
+  --bg:      #07090f;
+  --card:    #0d1117;
+  --card2:   #111827;
+  --border:  #1f2937;
+  --border2: #27374d;
+  --green:   #10b981;
+  --gdim:    rgba(16,185,129,0.1);
+  --gglow:   rgba(16,185,129,0.2);
+  --blue:    #3b82f6;
+  --bdim:    rgba(59,130,246,0.1);
+  --red:     #ef4444;
+  --rdim:    rgba(239,68,68,0.1);
+  --amber:   #f59e0b;
+  --adim:    rgba(245,158,11,0.1);
+  --text:    #f1f5f9;
+  --t2:      #94a3b8;
+  --t3:      #475569;
+  --sans:    'Plus Jakarta Sans', sans-serif;
+  --mono:    'DM Mono', monospace;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grid background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(16,185,129,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16,185,129,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+/* Top glow */
+body::after {
+  content: '';
+  position: fixed;
+  top: -300px; left: 50%;
+  transform: translateX(-50%);
+  width: 700px; height: 500px;
+  background: radial-gradient(ellipse, rgba(16,185,129,0.07) 0%, transparent 65%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── NAVIGATION ─────────────────────────── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(7,9,15,0.9);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  height: 60px; padding: 0 28px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 16px; font-weight: 800;
+  letter-spacing: -0.03em; color: #fff;
+}
+
+.logo-icon {
+  width: 32px; height: 32px;
+  background: var(--gdim);
+  border: 1px solid var(--gglow);
+  border-radius: 8px;
+  display: flex; align-items: center;
+  justify-content: center; font-size: 16px;
+}
+
+.status-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 13px; border-radius: 100px;
+  font-family: var(--mono); font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--card); color: var(--t3);
+  transition: all 0.3s;
+}
+
+.status-pill.ok {
+  background: var(--gdim);
+  border-color: var(--gglow);
+  color: var(--green);
+}
+
+.status-pill.fail {
+  background: var(--rdim);
+  border-color: rgba(239,68,68,0.3);
+  color: var(--red);
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--t3);
+  transition: all 0.3s;
+}
+
+.status-pill.ok .status-dot {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: dotPulse 2s infinite;
+}
+
+.status-pill.fail .status-dot { background: var(--red); }
+
+@keyframes dotPulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.4; }
+}
+
+/* ── MAIN ───────────────────────────────── */
+main {
+  position: relative; z-index: 1;
+  max-width: 1080px; margin: 0 auto;
+  padding: 44px 24px 100px;
+}
+
+/* ── HERO ───────────────────────────────── */
+.hero {
+  margin-bottom: 44px;
+  display: flex; align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+}
+
+.hero h1 {
+  font-size: clamp(30px, 5vw, 46px);
+  font-weight: 800; line-height: 1.08;
+  letter-spacing: -0.04em; color: #fff;
+  margin-bottom: 10px;
+}
+
+.hero h1 span { color: var(--green); }
+
+.hero p {
+  font-size: 14px; color: var(--t2);
+  line-height: 1.7; max-width: 460px;
+}
+
+.stats { display: flex; gap: 12px; flex-shrink: 0; }
+
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px; text-align: center; min-width: 76px;
+}
+
+.stat-n {
+  font-family: var(--mono);
+  font-size: 24px; font-weight: 500;
+  color: var(--green); line-height: 1; margin-bottom: 4px;
+}
+
+.stat-l {
+  font-size: 10px; color: var(--t3);
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+/* ── GRID LAYOUT ────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 390px 1fr;
+  gap: 20px; align-items: start;
+}
+
+@media (max-width: 860px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+/* ── CARDS ──────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+}
+
+.card-top { padding: 18px 22px 0; }
+
+.card-title {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--t3);
+  display: flex; align-items: center; gap: 7px;
+}
+
+.card-title::before {
+  content: ''; width: 3px; height: 13px;
+  background: var(--green); border-radius: 2px;
+}
+
+.card-body { padding: 16px 22px 22px; }
+
+/* ── SECTION LABELS ─────────────────────── */
+.slabel {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--t3);
+  margin: 18px 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--border);
+}
+.slabel:first-child { margin-top: 0; }
+
+/* ── FORM FIELDS ────────────────────────── */
+.field { margin-bottom: 11px; }
+.field:last-of-type { margin-bottom: 0; }
+
+.field label {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--t3); margin-bottom: 6px;
+}
+
+.req { color: var(--red); font-size: 10px; }
+
+.field input {
+  width: 100%;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 9px; padding: 10px 13px;
+  font-family: var(--mono); font-size: 13px;
+  color: var(--text); outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field input:focus {
+  border-color: rgba(16,185,129,0.45);
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.07);
+}
+
+.field input::placeholder { color: #1a2540; }
+.field input[readonly] { cursor: default; }
+
+.hint {
+  margin-top: 5px; font-size: 11px;
+  color: var(--t3); line-height: 1.5;
+}
+
+.time-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+
+/* ── BOXES ──────────────────────────────── */
+.info-box {
+  background: var(--bdim);
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 9px; padding: 11px 13px;
+  font-size: 12px; color: #93c5fd;
+  line-height: 1.6; margin-bottom: 14px;
+}
+
+.warn-box {
+  background: var(--adim);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 9px; padding: 11px 13px;
+  font-size: 12px; color: #fcd34d;
+  line-height: 1.6; margin-top: 10px;
+}
+
+.feature-box {
+  background: var(--gdim);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 9px; padding: 11px 13px;
+  font-size: 12px; color: #6ee7b7;
+  line-height: 1.7; margin-bottom: 14px;
+}
+
+/* ── BUTTONS ────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center;
+  justify-content: center; gap: 7px;
+  padding: 10px 18px; border: none;
+  border-radius: 9px; font-family: var(--sans);
+  font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+}
+
+.btn-primary {
+  width: 100%; margin-top: 16px;
+  background: var(--green); color: #000;
+  font-size: 14px; padding: 13px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(16,185,129,0.22);
+}
+
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border2); color: var(--t2);
+}
+.btn-ghost:hover { background: var(--card2); color: var(--text); }
+
+.btn-red {
+  background: transparent;
+  border: 1px solid rgba(239,68,68,0.2);
+  color: var(--red); font-size: 12px; padding: 6px 12px;
+}
+.btn-red:hover {
+  background: var(--rdim);
+  border-color: rgba(239,68,68,0.4);
+}
+
+/* ── TOOLBAR ────────────────────────────── */
+.toolbar {
+  padding: 13px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+}
+
+.search-wrap {
+  position: relative; flex: 1;
+  min-width: 150px; max-width: 240px;
+}
+
+.search-wrap .si {
+  position: absolute; left: 10px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px; color: var(--t3);
+  pointer-events: none;
+}
+
+.search-wrap input {
+  width: 100%; background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px 7px 28px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--text); outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-wrap input:focus { border-color: rgba(16,185,129,0.3); }
+.search-wrap input::placeholder { color: var(--t3); }
+
+.count-badge {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--t3); white-space: nowrap;
+}
+
+/* ── STORES LIST ────────────────────────── */
+.stores-list { max-height: 600px; overflow-y: auto; }
+.stores-list::-webkit-scrollbar { width: 4px; }
+.stores-list::-webkit-scrollbar-track { background: transparent; }
+.stores-list::-webkit-scrollbar-thumb {
+  background: var(--border2); border-radius: 2px;
+}
+
+/* ── STORE ITEM ─────────────────────────── */
+.store-item {
+  padding: 15px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start;
+  gap: 12px; transition: background 0.15s;
+  animation: itemIn 0.3s ease both;
+}
+
+@keyframes itemIn {
+  from { opacity:0; transform: translateY(-5px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.store-item:last-child { border-bottom: none; }
+.store-item:hover { background: rgba(255,255,255,0.015); }
+
+.store-num {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--card2); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--t3); flex-shrink: 0; margin-top: 2px;
+}
+
+.store-body { flex: 1; min-width: 0; }
+
+.store-name {
+  font-size: 14px; font-weight: 700; color: #fff;
+  margin-bottom: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.store-url {
+  font-family: var(--mono); font-size: 12px;
+  color: var(--blue); margin-bottom: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.store-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 8px; border-radius: 100px;
+  font-family: var(--mono); font-size: 10px;
+}
+
+.tag-g { background:var(--gdim); color:var(--green); border:1px solid rgba(16,185,129,0.2); }
+.tag-b { background:var(--bdim); color:var(--blue);  border:1px solid rgba(59,130,246,0.2); }
+.tag-a { background:var(--adim); color:var(--amber); border:1px solid rgba(245,158,11,0.2); }
+
+/* ── EMPTY STATE ────────────────────────── */
+.empty { padding: 56px 24px; text-align: center; }
+.empty-icon { font-size: 42px; margin-bottom: 12px; opacity: 0.45; }
+.empty-title { font-size: 15px; font-weight: 700; color: var(--t2); margin-bottom: 7px; }
+.empty-sub { font-size: 13px; color: var(--t3); line-height: 1.65; }
+
+/* ── SKELETON ───────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg, var(--card2) 25%, var(--border) 50%, var(--card2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite; border-radius: 8px;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── MODAL ──────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(10px);
+  z-index: 200;
+  display: flex; align-items: center;
+  justify-content: center; padding: 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 18px; padding: 28px;
+  width: 100%; max-width: 420px;
+  transform: scale(0.93) translateY(12px);
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+}
+
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+
+.modal-icon {
+  width: 44px; height: 44px; border-radius: 11px;
+  background: var(--rdim);
+  border: 1px solid rgba(239,68,68,0.2);
+  display: flex; align-items: center;
+  justify-content: center; font-size: 20px; margin-bottom: 13px;
+}
+
+.modal h3 {
+  font-size: 18px; font-weight: 800; color: #fff;
+  margin-bottom: 8px; letter-spacing: -0.03em;
+}
+
+.modal-url {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--blue); background: var(--bdim);
+  padding: 8px 11px; border-radius: 8px;
+  margin-bottom: 13px; word-break: break-all;
+  border: 1px solid rgba(59,130,246,0.15);
+}
+
+.modal p {
+  font-size: 13px; color: var(--t2);
+  line-height: 1.6; margin-bottom: 14px;
+}
+
+.modal-btns { display: flex; gap: 9px; margin-top: 14px; }
+.modal-btns .btn { flex: 1; padding: 11px; }
+
+/* ── TOAST ──────────────────────────────── */
+#toast-wrap {
+  position: fixed; bottom: 22px; right: 22px;
+  z-index: 500; display: flex;
+  flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 12px 15px; border-radius: 11px;
+  font-size: 13px; max-width: 300px;
+  transform: translateX(16px); opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events: all;
+}
+
+.toast.show { transform: translateX(0); opacity: 1; }
+.toast.s { background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); color:var(--green); }
+.toast.e { background:var(--rdim); border:1px solid rgba(239,68,68,0.3); color:var(--red); }
+
+.t-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+.t-title { font-weight: 700; margin-bottom: 2px; }
+.t-msg { opacity: 0.75; font-size: 11px; line-height: 1.4; }
+
+/* ── SPINNER ────────────────────────────── */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav>
+  <div class="logo">
+    <div class="logo-icon">🛒</div>
+    Shopify Tester
+  </div>
+  <div class="status-pill" id="statusPill">
+    <div class="status-dot"></div>
+    <span id="statusText">Connecting...</span>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <h1>Store Monitor<br/><span>Dashboard</span></h1>
+      <p>
+        Add any Shopify store and set your preferred daily test time.
+        Popups are handled automatically. If a test fails, you will
+        receive a screenshot and video in Slack showing exactly
+        what went wrong.
+      </p>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-n" id="totalCount">—</div>
+        <div class="stat-l">Stores</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" style="color:var(--blue)">24/7</div>
+        <div class="stat-l">Monitor</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid">
+
+    <!-- LEFT: Form -->
+    <div>
+      <div class="card">
+        <div class="card-top">
+          <div class="card-title">➕ Add New Store</div>
+        </div>
+        <div class="card-body">
+
+          <div class="feature-box">
+            🎬 <strong>What you get on Slack:</strong><br/>
+            ✅ Pass → Step-by-step confirmation message<br/>
+            ❌ Fail → Screenshot + Video of exact issue<br/>
+            🔔 All popups handled automatically<br/>
+            🛒 Cart drawer checkout supported<br/>
+            🗑️ Media auto-deleted after 5 days
+          </div>
+
+          <div class="info-box">
+            ℹ️ Fill all fields. Results will be sent to your
+            Slack channel every day at your chosen time.
+          </div>
+
+          <!-- Section 1 -->
+          <div class="slabel">Your Information</div>
+
+          <div class="field">
+            <label>Your Name / Company <span class="req">*</span></label>
+            <input type="text" id="clientName"
+              placeholder="e.g. ABC Fashion"/>
+          </div>
+
+          <!-- Section 2 -->
+          <div class="slabel">Store Details</div>
+
+          <div class="field">
+            <label>Shopify Store URL <span class="req">*</span></label>
+            <input type="url" id="storeUrl"
+              placeholder="https://yourstore.myshopify.com"/>
+            <div class="hint">⚠️ Enter full URL including https://</div>
+          </div>
+
+          <div class="field">
+            <label>Product to Test <span class="req">*</span></label>
+            <input type="text" id="product"
+              placeholder="e.g. T-Shirt, Shoes, Hoodie"/>
+            <div class="hint">
+              Enter a product name that exists in your store
+            </div>
+          </div>
+
+          <!-- Section 3 -->
+          <div class="slabel">Daily Test Schedule (India Standard Time)</div>
+
+          <div class="time-row">
+            <div class="field">
+              <label>Select Time <span class="req">*</span></label>
+              <input type="time" id="runTime" value="08:00"/>
+            </div>
+            <div class="field">
+              <label>Preview</label>
+              <input type="text" id="timePreview"
+                value="Daily at 08:00 AM IST" readonly
+                style="color:var(--green)"/>
+            </div>
+          </div>
+          <div class="hint" style="margin-top:-4px">
+            Your store will be tested automatically every day at this time
+          </div>
+
+          <!-- Section 4 -->
+          <div class="slabel">Slack Notification</div>
+
+          <div class="field">
+            <label>Slack Webhook URL <span class="req">*</span></label>
+            <input type="url" id="slackWebhook"
+              placeholder="https://hooks.slack.com/services/..."/>
+            <div class="hint">
+              How to create: api.slack.com/apps → Create App →
+              Incoming Webhooks → ON → Add Webhook → Copy URL
+            </div>
+          </div>
+
+          <!-- Section 5 -->
+          <div class="slabel">Security</div>
+
+          <div class="field">
+            <label>Delete Password <span class="req">*</span></label>
+            <input type="password" id="deleteToken"
+              placeholder="Any password — save it somewhere safe!"/>
+          </div>
+
+          <div class="warn-box">
+            ⚠️ <strong>Save your password!</strong><br/>
+            You will need this to remove the store later.
+            If you forget it, the store cannot be removed.
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:16px;">
+            <button class="btn btn-primary" id="addBtn" onclick="addStore()" style="margin-top:0;">
+              ➕ &nbsp;Add Store
+            </button>
+            <button class="btn" id="instantBtn" onclick="runInstantTest()" style="margin-top:0; background: var(--amber); color: #000; width: 100%; font-size: 14px; padding: 13px;">
+              ⚡ &nbsp;Run Instant Test
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Stores List -->
+    <div>
+      <div class="card">
+
+        <div class="toolbar">
+          <div class="card-title">📋 Active Stores</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="search-wrap">
+              <span class="si">🔍</span>
+              <input type="text" id="searchInput"
+                placeholder="Search stores..."
+                oninput="filterStores()"/>
+            </div>
+            <span class="count-badge" id="countBadge">Loading...</span>
+          </div>
+        </div>
+
+        <div class="stores-list" id="storesList">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+            <div class="skeleton" style="height:80px"></div>
+            <div class="skeleton" style="height:80px"></div>
+            <div class="skeleton" style="height:80px"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="deleteModal" onclick="backdropClick(event)">
+  <div class="modal">
+    <div class="modal-icon">🗑️</div>
+    <h3>Remove Store?</h3>
+    <div class="modal-url" id="modalUrl">—</div>
+    <p>
+      Daily testing for this store will be permanently stopped.
+      You will need to add it again to resume monitoring.
+    </p>
+    <div class="field">
+      <label>Delete Password <span class="req">*</span></label>
+      <input type="password" id="deleteInput"
+        placeholder="Enter the password you set when adding this store"/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-red" id="confirmBtn"
+        onclick="confirmDelete()"
+        style="padding:11px;font-size:13px;font-weight:700">
+        Yes, Remove Store
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-wrap"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIGURATION — Replace with your actual keys
+// ═══════════════════════════════════════════════
+const SUPABASE_URL      = 'https://xwuntkukzegmahxcaebr.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_xP5FL8uTNiVWslLkzf675Q_XSa1xPLz';
+// ═══════════════════════════════════════════════
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allStores      = [];
+let deleteTargetId = null;
+
+// ── TIME PREVIEW ──────────────────────────────────────────
+document.getElementById('runTime').addEventListener('input', function () {
+  const [h, m] = this.value.split(':');
+  const hour   = parseInt(h);
+  const ampm   = hour >= 12 ? 'PM' : 'AM';
+  const h12    = hour % 12 || 12;
+  document.getElementById('timePreview').value =
+    `Daily at ${h12}:${m} ${ampm} IST`;
+});
+
+// ── INITIALIZE ────────────────────────────────────────────
+async function init() {
+  await checkConnection();
+  await loadStores();
+
+  // Real-time — list updates instantly when stores change
+  db.channel('realtime')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'stores' },
+      () => loadStores())
+    .subscribe();
+}
+
+// ── CHECK CONNECTION ──────────────────────────────────────
+async function checkConnection() {
+  const pill = document.getElementById('statusPill');
+  const text = document.getElementById('statusText');
+  try {
+    const { error } = await db.from('stores').select('id').limit(1);
+    if (error) throw error;
+    pill.className   = 'status-pill ok';
+    text.textContent = 'Connected ✓';
+  } catch (e) {
+    pill.className   = 'status-pill fail';
+    text.textContent = 'Connection Failed';
+    toast('e', 'Database Error', 'Check your SUPABASE_URL and ANON_KEY');
+  }
+}
+
+// ── LOAD STORES ───────────────────────────────────────────
+async function loadStores() {
+  const { data, error } = await db
+    .from('stores')
+    .select('*')
+    .eq('active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error(error.message); return; }
+
+  allStores = data || [];
+  document.getElementById('totalCount').textContent = allStores.length;
+  renderList(allStores);
+}
+
+// ── RENDER LIST ───────────────────────────────────────────
+function renderList(list) {
+  const el    = document.getElementById('storesList');
+  const badge = document.getElementById('countBadge');
+
+  badge.textContent =
+    `${list.length} store${list.length !== 1 ? 's' : ''} active`;
+
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No stores added yet</div>
+        <div class="empty-sub">
+          Use the form on the left to add your first store.<br/>
+          It will be tested automatically every day at your chosen time.
+        </div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = list.map((s, i) => `
+    <div class="store-item">
+      <div class="store-num">${i + 1}</div>
+      <div class="store-body">
+        <div class="store-name">${esc(s.client_name)}</div>
+        <div class="store-url" title="${esc(s.store_url)}">
+          ${esc(s.store_url)}
+        </div>
+        <div class="store-tags">
+          <span class="tag tag-g">⏰ ${fTime(s.run_time)} IST Daily</span>
+          <span class="tag tag-b">🔍 ${esc(s.product)}</span>
+          <span class="tag tag-a">📅 Added ${fDate(s.created_at)}</span>
+        </div>
+      </div>
+      <button class="btn btn-red"
+        onclick="openDeleteModal('${s.id}','${esc(s.store_url)}')">
+        Remove
+      </button>
+    </div>`).join('');
+}
+
+// ── FILTER ────────────────────────────────────────────────
+function filterStores() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  if (!q) { renderList(allStores); return; }
+  renderList(allStores.filter(s =>
+    s.client_name.toLowerCase().includes(q) ||
+    s.store_url.toLowerCase().includes(q)   ||
+    s.product.toLowerCase().includes(q)
+  ));
+}
+
+// ── ADD STORE ─────────────────────────────────────────────
+async function addStore() {
+  const clientName   = g('clientName');
+  const storeUrl     = g('storeUrl');
+  const product      = g('product') || 'shirt';
+  const runTime      = g('runTime');
+  const slackWebhook = g('slackWebhook');
+  const deleteToken  = g('deleteToken');
+
+  if (!clientName)
+    return toast('e', 'Missing Field', 'Please enter your name or company');
+  if (!storeUrl)
+    return toast('e', 'Missing Field', 'Please enter the store URL');
+  if (!storeUrl.startsWith('http'))
+    return toast('e', 'Invalid URL', 'URL must start with https://');
+  if (!runTime)
+    return toast('e', 'Missing Field', 'Please select a test time');
+  if (!slackWebhook)
+    return toast('e', 'Missing Field', 'Please enter the Slack Webhook URL');
+  if (!slackWebhook.includes('hooks.slack.com'))
+    return toast('e', 'Invalid Webhook', 'Please enter a valid Slack Webhook URL');
+  if (!deleteToken)
+    return toast('e', 'Missing Field', 'Please set a delete password');
+  if (deleteToken.length < 4)
+    return toast('e', 'Weak Password', 'Password must be at least 4 characters');
+
+  const cleanUrl = storeUrl.trim().replace(/\/$/, '');
+  if (allStores.find(s => s.store_url === cleanUrl))
+    return toast('e', 'Already Exists', 'This store URL has already been added');
+
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Adding...';
+
+  try {
+    const { error } = await db.from('stores').insert({
+      client_name:   clientName,
+      store_url:     cleanUrl,
+      product:       product,
+      run_time:      runTime,
+      slack_webhook: slackWebhook.trim(),
+      delete_token:  deleteToken,
+      active:        true,
+    });
+
+    if (error) throw error;
+
+    ['clientName','storeUrl','product','slackWebhook','deleteToken']
+      .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('runTime').value      = '08:00';
+    document.getElementById('timePreview').value  = 'Daily at 8:00 AM IST';
+
+    toast('s', '✅ Store Added!',
+      `Test will run daily at ${fTime(runTime)} IST`);
+    await loadStores();
+
+  } catch (e) {
+    toast('e', 'Error', e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '➕ &nbsp;Add Store';
+  }
+}
+
+// ── RUN INSTANT TEST ──────────────────────────────────────
+async function runInstantTest() {
+  const clientName   = g('clientName');
+  const storeUrl     = g('storeUrl');
+  const product      = g('product') || 'shirt';
+  const slackWebhook = g('slackWebhook');
+
+  // We don't care about deleteToken or runTime for Instant Tests
+  if (!clientName) return toast('e', 'Missing Field', 'Please enter your name or company');
+  if (!storeUrl) return toast('e', 'Missing Field', 'Please enter the store URL');
+  if (!storeUrl.startsWith('http')) return toast('e', 'Invalid URL', 'URL must start with https://');
+  if (!slackWebhook || !slackWebhook.includes('hooks.slack.com')) 
+    return toast('e', 'Invalid Webhook', 'Please enter a valid Slack Webhook URL');
+
+  const cleanUrl = storeUrl.trim().replace(/\/$/, '');
+  const btn = document.getElementById('instantBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Triggering...';
+
+  try {
+    const { error } = await db.from('stores').insert({
+      client_name:   clientName,
+      store_url:     cleanUrl,
+      product:       product,
+      run_time:      'instant',
+      slack_webhook: slackWebhook.trim(),
+      delete_token:  'instant_run_no_auth',
+      active:        false // won't show in the normal cron schedule
+    });
+
+    if (error) throw error;
+    toast('s', '✅ Instant Test Sent!', 'The request is sent. Check Slack in 1-2 minutes.');
+
+  } catch (e) {
+    toast('e', 'Error Triggering', e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ &nbsp;Run Instant Test';
+  }
+}
+
+// ── DELETE MODAL ──────────────────────────────────────────
+function openDeleteModal(id, url) {
+  deleteTargetId = id;
+  document.getElementById('modalUrl').textContent  = url;
+  document.getElementById('deleteInput').value     = '';
+  document.getElementById('deleteModal').classList.add('open');
+  setTimeout(() => document.getElementById('deleteInput').focus(), 300);
+}
+
+function closeModal() {
+  document.getElementById('deleteModal').classList.remove('open');
+  deleteTargetId = null;
+}
+
+function backdropClick(e) {
+  if (e.target.id === 'deleteModal') closeModal();
+}
+
+// ── CONFIRM DELETE ────────────────────────────────────────
+async function confirmDelete() {
+  const token = document.getElementById('deleteInput').value.trim();
+  if (!token)
+    return toast('e', 'Missing', 'Please enter your delete password');
+
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const { data, error } = await db
+      .from('stores')
+      .select('delete_token')
+      .eq('id', deleteTargetId)
+      .single();
+
+    if (error) throw error;
+
+    if (data.delete_token !== token) {
+      toast('e', 'Wrong Password', 'The password you entered is incorrect');
+      btn.disabled = false;
+      btn.innerHTML = 'Yes, Remove Store';
+      return;
+    }
+
+    const { error: e2 } = await db
+      .from('stores')
+      .update({ active: false })
+      .eq('id', deleteTargetId);
+
+    if (e2) throw e2;
+
+    closeModal();
+    toast('s', '✅ Store Removed',
+      'Daily testing has been stopped for this store');
+    await loadStores();
+
+  } catch (e) {
+    toast('e', 'Error', e.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Yes, Remove Store';
+  }
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function toast(type, title, msg = '') {
+  const wrap = document.getElementById('toast-wrap');
+  const el   = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `
+    <span class="t-icon">${type === 's' ? '✅' : '❌'}</span>
+    <div>
+      <div class="t-title">${title}</div>
+      ${msg ? `<div class="t-msg">${msg}</div>` : ''}
+    </div>`;
+  wrap.appendChild(el);
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => el.classList.add('show'))
+  );
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 4500);
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+const g   = id => document.getElementById(id).value.trim();
+const esc = s  => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function fTime(t) {
+  if (!t) return t;
+  const [h, m] = t.split(':');
+  const hour   = parseInt(h);
+  return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function fDate(iso) {
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  });
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' &&
+    document.getElementById('deleteModal').classList.contains('open'))
+    confirmDelete();
+});
+
+// Start app
+init();
+</script>
+</body>
+</html>

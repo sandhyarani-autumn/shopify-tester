@@ -1,0 +1,12 @@
+[
+  {
+    "id": "test-001",
+    "client_name": "Test Store",
+    "store_url": "https://neweracap.in/",
+    "product": "New York Yankees MLB Recycled Midi Black 9FORTY Cap",
+    "run_time": "08:00",
+    "slack_webhook": "https://hooks.slack.com/placeholder",
+    "delete_token": "test123",
+    "active": true
+  }
+]

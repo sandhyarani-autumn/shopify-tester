@@ -1,0 +1,28 @@
+{
+  "https://neweracap.in/": [
+    {
+      "step": "Open Store",
+      "status": "pass"
+    },
+    {
+      "step": "Search Product",
+      "status": "pass"
+    },
+    {
+      "step": "Open Product",
+      "status": "pass"
+    },
+    {
+      "step": "Add to Cart",
+      "status": "pass"
+    },
+    {
+      "step": "Cart / Checkout",
+      "status": "pass"
+    },
+    {
+      "step": "Verify Checkout",
+      "status": "pass"
+    }
+  ]
+}

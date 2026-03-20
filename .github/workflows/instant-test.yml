@@ -1,0 +1,67 @@
+name: Instant Test Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      store_url:
+        description: 'URL of the store'
+        required: true
+        type: string
+      product:
+        description: 'Product name'
+        required: true
+        type: string
+      slack_webhook:
+        description: 'Slack Webhook URL'
+        required: true
+        type: string
+      client_name:
+        description: 'Client Name'
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Setup Store JSON
+        run: |
+          cat <<EOF > stores-to-run.json
+          [
+            {
+              "store_url": "${{ inputs.store_url }}",
+              "product": "${{ inputs.product }}",
+              "slack_webhook": "${{ inputs.slack_webhook }}",
+              "client_name": "${{ inputs.client_name }}"
+            }
+          ]
+          EOF
+
+      - name: Install Playwright Browser
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Playwright Tests
+        run: npx playwright test
+        continue-on-error: true
+
+      - name: Send Slack Notifications
+        if: always()
+        run: node notify-slack.js
+        env:
+          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:     ${{ secrets.SUPABASE_ANON_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY:    ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
