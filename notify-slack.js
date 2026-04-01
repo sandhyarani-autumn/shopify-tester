@@ -66,6 +66,7 @@ const time = new Date().toLocaleString('en-IN', {
       const videoPath      = findFile('webm');
 
       let videoUrl = null;
+      let imageUrl = null;
 
       // Upload video to Cloudinary
       if (videoPath && fs.existsSync(videoPath)) {
@@ -74,17 +75,34 @@ const time = new Date().toLocaleString('en-IN', {
           const upload = await cloudinary.uploader.upload(videoPath, {
             resource_type: 'video',
             folder:        'shopify-tester',
-            public_id:     `fail-${Date.now()}`,
+            public_id:     `fail-vid-${Date.now()}`,
             invalidate:    true,
           });
           videoUrl = upload.secure_url;
           console.log('Video uploaded:', videoUrl);
 
-          // Auto delete triggered via periodic cleanup script (runs every day)
-          await deleteOldCloudinaryVideos();
+          // Auto delete triggered via periodic cleanup script
+          await deleteOldCloudinaryMedia();
 
         } catch (e) {
-          console.error('Cloudinary upload failed:', e.message);
+          console.error('Cloudinary video upload failed:', e.message);
+        }
+      }
+
+      // Upload screenshot to Cloudinary
+      if (screenshotPath && fs.existsSync(screenshotPath)) {
+        try {
+          console.log('Uploading screenshot to Cloudinary...');
+          const uploadImg = await cloudinary.uploader.upload(screenshotPath, {
+            resource_type: 'image',
+            folder:        'shopify-tester',
+            public_id:     `fail-img-${Date.now()}`,
+            invalidate:    true,
+          });
+          imageUrl = uploadImg.secure_url;
+          console.log('Screenshot uploaded:', imageUrl);
+        } catch (e) {
+          console.error('Cloudinary image upload failed:', e.message);
         }
       }
 
@@ -96,19 +114,14 @@ const time = new Date().toLocaleString('en-IN', {
         `⏰ *Scheduled Time:* ${formatTime(store.run_time)} IST\n\n` +
         `*Step by Step Results:*\n${stepSummary}\n\n` +
         (videoUrl ? `🎬 *Test Recording:* ${videoUrl}\n` : '') +
+        (imageUrl ? `📸 *Failure Screenshot:* ${imageUrl}\n` : '') +
         `⚠️ Please check your store and fix the issue.\n` +
-        (videoUrl ? `🗑️ Video auto-deleted after 5 days.\n` : '') +
+        ((videoUrl || imageUrl) ? `🗑️ Media auto-deleted after 5 days.\n` : '') +
         `🕐 Tested at: ${time}`;
 
+      // Send the single comprehensive text block
+      // Cloudinary Image URLs automatically unfurl (expand) inside Slack!
       await sendSlackText(store.slack_webhook, message);
-
-      // Send screenshot to Slack
-      if (screenshotPath && fs.existsSync(screenshotPath)) {
-        await sendSlackText(
-          store.slack_webhook,
-          `📸 *Screenshot captured at the point of failure.*`
-        );
-      }
 
       // Delete all local files immediately
       deleteLocalFiles();
@@ -173,31 +186,35 @@ function formatTime(time) {
   return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
 }
 
-// ── Delete old videos from Cloudinary ───────────────
-async function deleteOldCloudinaryVideos() {
+// ── Delete old media from Cloudinary ───────────────
+async function deleteOldCloudinaryMedia() {
   try {
-    console.log('Checking for Cloudinary videos older than 5 days...');
-    const result = await cloudinary.api.resources({
-      type: 'upload',
-      prefix: 'shopify-tester', // Check inside this specific folder
-      resource_type: 'video',
-      max_results: 50 // Fetch up to 50 videos
-    });
-
+    console.log('Checking for Cloudinary media older than 5 days...');
+    let deletedCount = 0;
+    
+    const resourceTypes = ['video', 'image'];
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
-    let deletedCount = 0;
-    for (const resource of result.resources) {
-      const uploadDate = new Date(resource.created_at);
-      if (uploadDate < fiveDaysAgo) {
-        console.log(`Deleting old video: ${resource.public_id} (Uploaded: ${uploadDate.toDateString()})`);
-        await cloudinary.uploader.destroy(resource.public_id, { resource_type: 'video' });
-        deletedCount++;
+    for (const rType of resourceTypes) {
+      const result = await cloudinary.api.resources({
+        type: 'upload',
+        prefix: 'shopify-tester', // Check inside this specific folder
+        resource_type: rType,
+        max_results: 50
+      });
+
+      for (const resource of result.resources) {
+        const uploadDate = new Date(resource.created_at);
+        if (uploadDate < fiveDaysAgo) {
+          console.log(`Deleting old ${rType}: ${resource.public_id} (Uploaded: ${uploadDate.toDateString()})`);
+          await cloudinary.uploader.destroy(resource.public_id, { resource_type: rType });
+          deletedCount++;
+        }
       }
     }
-    console.log(`Cloudinary cleanup complete. Deleted ${deletedCount} old videos.`);
+    console.log(`Cloudinary cleanup complete. Deleted ${deletedCount} old files.`);
   } catch (error) {
-    console.error('Failed to clean up old Cloudinary videos:', error.message);
+    console.error('Failed to clean up old Cloudinary media:', error.message);
   }
 }

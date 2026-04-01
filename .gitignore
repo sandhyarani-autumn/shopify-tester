@@ -12,3 +12,7 @@ step-results.json
 cart_screenshot.png
 drawer_debug.html
 cart_body.html
+
+# Local Environment Secrets
+.env
+.env.local
