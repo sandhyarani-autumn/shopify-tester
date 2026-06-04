@@ -11,12 +11,20 @@ cloudinary.config({
 });
 
 // Read test data
-const results     = JSON.parse(fs.readFileSync('results.json', 'utf-8'));
-const stores      = JSON.parse(fs.readFileSync('stores-to-run.json', 'utf-8'));
+let results = { suites: [] };
+try {
+  if (fs.existsSync('results.json')) {
+    results = JSON.parse(fs.readFileSync('results.json', 'utf-8'));
+  }
+} catch (e) {
+  console.error('results.json missing or invalid:', e);
+}
+
+const stores      = fs.existsSync('stores-to-run.json') ? JSON.parse(fs.readFileSync('stores-to-run.json', 'utf-8')) : [];
 const stepResults = fs.existsSync('step-results.json')
   ? JSON.parse(fs.readFileSync('step-results.json', 'utf-8'))
   : {};
-const allSpecs = results.suites.flatMap(s => s.specs);
+const allSpecs = (results.suites || []).flatMap(s => s.specs || []);
 
 // IST timestamp
 const time = new Date().toLocaleString('en-IN', {
@@ -27,13 +35,22 @@ const time = new Date().toLocaleString('en-IN', {
   for (const store of stores) {
 
     const spec   = allSpecs.find(s =>
-      s.title.includes(store.store_url) ||
-      s.title.includes(store.client_name)
+      s.title && (s.title.includes(store.store_url) || s.title.includes(store.client_name))
     );
     const passed = spec ? spec.ok : false;
     const steps  = stepResults[store.store_url] || [];
 
-    if (passed) {
+    if (!spec && !fs.existsSync('results.json')) {
+      // Fatal crash scenario
+      const message =
+        `🚨 *CRITICAL FAILURE — TEST ENGINE CRASHED*\n\n` +
+        `🏪 *Store:* ${store.store_url}\n` +
+        `👤 *Client:* ${store.client_name}\n` +
+        `⏰ *Scheduled Time:* ${formatTime(store.run_time)} IST\n\n` +
+        `⚠️ Playwright test engine completely crashed before it could generate results. This usually means the GitHub Actions runner failed to launch the browser or install dependencies.\n\n` +
+        `🕐 Tested at: ${time}`;
+      await sendSlackText(store.slack_webhook, message);
+    } else if (passed) {
 
       // ── PASS ──────────────────────────────────────────
       const stepSummary = steps.map(s => `✅ ${s.step}`).join('\n');
