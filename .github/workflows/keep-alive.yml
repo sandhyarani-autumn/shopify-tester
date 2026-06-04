@@ -3,7 +3,7 @@ name: Supabase Keep Alive
 on:
   # Run every 5 days to prevent Supabase from pausing
   schedule:
-    - cron: '0 0 */5 * *'
+    - cron: '30 0 */5 * *'
 
   workflow_dispatch:
 

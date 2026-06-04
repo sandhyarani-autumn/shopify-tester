@@ -3,7 +3,7 @@ name: Shopify Store Tester
 on:
   # Check every hour which stores are scheduled
   schedule:
-    - cron: '0 * * * *'
+    - cron: '30 * * * *'
 
   # Allow manual run from GitHub Actions tab
   workflow_dispatch:

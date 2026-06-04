@@ -17,7 +17,7 @@ async function checkStores() {
     hour12:   false
   });
 
-  const currentHour = now.split(':')[0];
+  const currentHour = now.split(':')[0].padStart(2, '0');
   console.log(`Current IST Time: ${now}`);
   console.log(`Checking stores scheduled for hour: ${currentHour}`);
 
